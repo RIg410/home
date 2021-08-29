@@ -1,10 +1,10 @@
 use crate::home::Home;
 use crate::infra::mtrf_wire::{Message, OnMsg, CH};
+use anyhow::Result;
 use mtrf::cmd::Cmd;
 use std::fmt::{Debug, Formatter};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use anyhow::Result;
 
 #[derive(Clone)]
 pub struct Switch {
@@ -12,7 +12,10 @@ pub struct Switch {
 }
 
 impl Switch {
-    pub fn on_switch(ch: CH, on_switch: Box<dyn Fn(&Home) -> Result<()> + Send + Sync + 'static>) -> Switch {
+    pub fn on_switch(
+        ch: CH,
+        on_switch: Box<dyn Fn(&Home) -> Result<()> + Send + Sync + 'static>,
+    ) -> Switch {
         Switch {
             inner: Arc::new(Inner {
                 is_on: Default::default(),
