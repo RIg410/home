@@ -6,8 +6,10 @@ extern crate anyhow;
 extern crate futures;
 
 use crate::home::Home;
-use crate::infra::mtrf_wire;
+use crate::infra::hap_infra::Accessory;
+use crate::infra::telegram::TBot;
 use anyhow::Result;
+use infra::mtrf_infra::mtrf_wire;
 use std::sync::Arc;
 
 mod devices;
@@ -23,9 +25,9 @@ async fn hello() -> &'static str {
 #[rocket::main]
 async fn main() {
     env_logger::init();
-    let _home = init_state().unwrap();
+    let (_home, hap_devs) = init_state().unwrap();
 
-    let homekit = homekit::init();
+    let homekit = homekit::init(hap_devs);
     let web_server = rocket::build().mount("/", routes![hello]).launch();
 
     let (homekit, web_server) = join!(web_server, homekit);
@@ -33,9 +35,12 @@ async fn main() {
     web_server.unwrap();
 }
 
-fn init_state() -> Result<Arc<Home>> {
+fn init_state() -> Result<(Arc<Home>, Vec<Accessory>)> {
+    let bot = TBot::new()?;
+
     let (home, handlers) = home::init()?;
-    let mtrf = handlers.into_inner();
-    mtrf_wire::init(mtrf, home.clone())?;
-    Ok(home)
+    let (mtrf, hap) = handlers.into_inner();
+    mtrf_wire::init(mtrf, bot, home.clone())?;
+
+    Ok((home, hap))
 }

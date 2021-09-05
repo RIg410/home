@@ -1,4 +1,6 @@
 use crate::home::Home;
+use crate::infra::mtrf_infra::MtrfInfo;
+use crate::infra::telegram::{TBot, User};
 use anyhow::Result;
 use mtrf::cmd::request::Request;
 use mtrf::cmd::response::Response;
@@ -37,14 +39,36 @@ pub trait OnMsg: Send + 'static {
     fn on_msg(&self, home: &Home, msg: Message);
 }
 
+#[derive(Debug)]
+pub struct Info {
+    pub loc: &'static str,
+    pub name: &'static str,
+}
+
 struct MessageHandler {
-    handlers: HashMap<CH, Box<dyn OnMsg>>,
+    handlers: HashMap<CH, (Box<dyn OnMsg>, Info)>,
     home: Arc<Home>,
+    bot: TBot,
 }
 
 impl OnMessage for MessageHandler {
     fn on_message(&mut self, msg: Response) {
-        if let Some(hdl) = self.handlers.get(&msg.ch) {
+        if let Some((hdl, info)) = self.handlers.get(&msg.ch) {
+            if let Cmd::BatteryLow = msg.cmd {
+                if let Err(err) = self.bot.send_msg(
+                    User::Root,
+                    format!(
+                        "The {} device located in the {} is discharged. 😭",
+                        info.loc, info.name
+                    ),
+                ) {
+                    error!(
+                        "Failed to send low energy message about {:?}. Error:[{:?}]",
+                        info, err
+                    );
+                }
+            }
+
             hdl.on_msg(self.home.as_ref(), msg.into());
         } else {
             warn!("No handlers found for msg: {}", msg);
@@ -52,7 +76,7 @@ impl OnMessage for MessageHandler {
     }
 }
 
-pub fn init(handlers: HashMap<CH, Box<dyn OnMsg>>, home: Arc<Home>) -> Result<()> {
+pub fn init(mtrf: MtrfInfo, bot: TBot, home: Arc<Home>) -> Result<()> {
     let serial = Some(SERIAL.to_string());
     let ports = serialport::available_ports()?
         .into_iter()
@@ -75,7 +99,14 @@ pub fn init(handlers: HashMap<CH, Box<dyn OnMsg>>, home: Arc<Home>) -> Result<()
     let port = &ports[0];
     info!("Init mrtf using port:{}", port);
 
-    let mtrf = Mtrf::new(&port, MessageHandler { handlers, home })?;
+    let mtrf = Mtrf::new(
+        port,
+        MessageHandler {
+            handlers: mtrf.devs,
+            home,
+            bot,
+        },
+    )?;
     INSTANCE
         .set(Mutex::new(mtrf))
         .map_err(|_| anyhow!("Mtrf is already initialized."))?;

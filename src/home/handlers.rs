@@ -1,18 +1,20 @@
 use crate::infra::hap_infra::Accessory;
-use crate::infra::mtrf_wire::{OnMsg, CH};
+use crate::infra::mtrf_infra::mtrf_wire::{Info, OnMsg};
+use crate::infra::mtrf_infra::MtrfInfo;
 use anyhow::{Error, Result};
-use std::collections::HashMap;
 use std::convert::TryInto;
 
 #[derive(Default)]
 pub struct Handlers {
-    mtrf: HashMap<CH, Box<dyn OnMsg>>,
+    mtrf: MtrfInfo,
     hap: Vec<Accessory>,
 }
 
 impl Handlers {
-    pub fn mtrf<M: OnMsg + Clone>(&mut self, dev: M) -> M {
-        self.mtrf.insert(dev.ch(), Box::new(dev.clone()));
+    pub fn mtrf<M: OnMsg + Clone>(&mut self, loc: &'static str, name: &'static str, dev: M) -> M {
+        self.mtrf
+            .devs
+            .insert(dev.ch(), (Box::new(dev.clone()), Info { loc, name }));
         dev
     }
 
@@ -21,7 +23,7 @@ impl Handlers {
         Ok(dev)
     }
 
-    pub fn into_inner(self) -> HashMap<CH, Box<dyn OnMsg>> {
-        self.mtrf
+    pub fn into_inner(self) -> (MtrfInfo, Vec<Accessory>) {
+        (self.mtrf, self.hap)
     }
 }

@@ -1,5 +1,5 @@
 use crate::home::Home;
-use crate::infra::mtrf_wire::{Message, OnMsg, CH};
+use crate::infra::mtrf_infra::mtrf_wire::{Message, OnMsg, CH};
 use anyhow::Result;
 use mtrf::cmd::Cmd;
 use std::fmt::{Debug, Formatter};

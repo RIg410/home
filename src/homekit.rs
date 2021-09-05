@@ -1,3 +1,4 @@
+use crate::infra::hap_infra::Accessory;
 use anyhow::Result;
 use hap::accessory::AccessoryCategory;
 use hap::server::{IpServer, Server};
@@ -5,7 +6,7 @@ use hap::storage::{FileStorage, Storage};
 use hap::{Config, MacAddress, Pin};
 use mac_address::get_mac_address;
 
-pub async fn init() -> Result<()> {
+pub async fn init(devs: Vec<Accessory>) -> Result<()> {
     let mut storage = FileStorage::current_dir().await?;
 
     let addr = get_mac_address()?.ok_or_else(|| anyhow!("Failed to get mac address"))?;
@@ -31,6 +32,15 @@ pub async fn init() -> Result<()> {
 
     let server = IpServer::new(config, storage).await?;
     info!("Starting hap.");
+
+    for dev in devs {
+        match dev {
+            Accessory::SwitchAccessory(acc) => {
+                server.add_accessory(acc).await?;
+            }
+        }
+    }
+
     server.run_handle().await?;
     Ok(())
 }
