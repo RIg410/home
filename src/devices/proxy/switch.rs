@@ -10,14 +10,21 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 #[derive(Debug, Clone)]
+pub enum SwitchType {
+    Light,
+    Curtain,
+}
+
+#[derive(Debug, Clone)]
 pub struct Switch {
     name: &'static str,
     info_url: Url,
     update_url: Url,
+    tp: SwitchType,
 }
 
 impl Switch {
-    pub fn new(name: &'static str) -> Result<Switch> {
+    pub fn new(name: &'static str, tp: SwitchType) -> Result<Switch> {
         Ok(Switch {
             name,
             info_url: Url::parse(&format!(
@@ -28,20 +35,35 @@ impl Switch {
                 "http://localhost:{}/odin/api/v1/device/{}/update",
                 OLD_SERVICE_PORT, name
             ))?,
+            tp,
         })
     }
 
     pub fn is_on(&self) -> Result<bool> {
-        let state: State = get(self.info_url.clone())?.json()?;
-        Ok(state.is_on)
+        match self.tp {
+            SwitchType::Light => {
+                let state: LightState = get(self.info_url.clone())?.json()?;
+                Ok(state.is_on)
+            }
+            SwitchType::Curtain => {
+                let state: CurtainState = get(self.info_url.clone())?.json()?;
+                Ok(state.is_open)
+            }
+        }
     }
 
     pub fn update_state(&self, is_on: bool) -> Result<()> {
-        let resp = Client::builder()
-            .build()?
-            .post(self.update_url.clone())
-            .json(&State { is_on })
-            .send()?;
+        let mut builder = Client::builder().build()?.post(self.update_url.clone());
+        match self.tp {
+            SwitchType::Light => {
+                builder = builder.json(&LightState { is_on });
+            }
+            SwitchType::Curtain => {
+                builder = builder.json(&CurtainState { is_open: is_on });
+            }
+        };
+
+        let resp = builder.send()?;
         if resp.status().is_success() {
             Ok(())
         } else {
@@ -88,8 +110,13 @@ impl TryFrom<Switch> for Accessory {
 }
 
 #[derive(Serialize, Deserialize)]
-struct State {
+struct LightState {
     pub is_on: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+struct CurtainState {
+    pub is_open: bool,
 }
 
 #[derive(Debug)]

@@ -1,5 +1,5 @@
 use crate::devices::mtrf_dev::Switch;
-use crate::devices::proxy::switch::{Switch as ProxySwitch, Toggle};
+use crate::devices::proxy::switch::{Switch as ProxySwitch, SwitchType, Toggle};
 use crate::home::handlers::Handlers;
 use crate::home::rooms::Room;
 use crate::home::Home;
@@ -24,8 +24,8 @@ pub struct Bedroom {
 impl Bedroom {
     pub fn new(hdlr: &mut Handlers) -> Result<Bedroom> {
         Ok(Bedroom {
-            lamp: hdlr.hap(ProxySwitch::new("bedroom_lamp")?)?,
-            curtain: hdlr.hap(ProxySwitch::new("bad_room_curtains")?)?,
+            lamp: hdlr.hap(ProxySwitch::new("bedroom_lamp", SwitchType::Light)?)?,
+            curtain: hdlr.hap(ProxySwitch::new("bad_room_curtains", SwitchType::Curtain)?)?,
             left_switch: hdlr.mtrf(
                 LOC,
                 SWITCH,
