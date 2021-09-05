@@ -25,7 +25,7 @@ impl Bedroom {
             curtain: hdlr.hap(ProxySwitch::new("bad_room_curtains")?)?,
             left_switch: hdlr.mtrf(Switch::on_switch(LEFT_SWITCH_ID, Box::new(left_switch))),
             right_switch: hdlr.mtrf(Switch::on_switch(RIGHT_SWITCH_ID, Box::new(right_switch))),
-            switch_off_all: Toggle::new("bedroom_1")?
+            switch_off_all: Toggle::new("bedroom_1")?,
         })
     }
 }

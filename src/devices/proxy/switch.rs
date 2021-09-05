@@ -103,7 +103,7 @@ impl Toggle {
         Ok(Toggle {
             name,
             url: Url::parse(&format!(
-                "http://192.168.0.100:{}/odin/api/switch/{}/toggle",
+                "http://localhost:{}/odin/api/switch/{}/toggle",
                 OLD_SERVICE_PORT, name
             ))?,
         })

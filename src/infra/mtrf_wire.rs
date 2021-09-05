@@ -4,13 +4,15 @@ use mtrf::cmd::request::Request;
 use mtrf::cmd::response::Response;
 use mtrf::cmd::{Cmd, CtrResponse, Mode};
 use mtrf::mtrf::{Mtrf, OnMessage};
-use mtrf::ports;
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
+use serialport::SerialPortType;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 pub type CH = u8;
+
+const SERIAL: &str = "AL065KM0";
 
 static INSTANCE: OnceCell<Mutex<Mtrf>> = OnceCell::new();
 
@@ -51,15 +53,29 @@ impl OnMessage for MessageHandler {
 }
 
 pub fn init(handlers: HashMap<CH, Box<dyn OnMsg>>, home: Arc<Home>) -> Result<()> {
-    let ports = ports()?;
+    let serial = Some(SERIAL.to_string());
+    let ports = serialport::available_ports()?
+        .into_iter()
+        .filter_map(|p| match p.port_type {
+            SerialPortType::UsbPort(usb) => {
+                if usb.serial_number == serial || p.port_name.contains(SERIAL) {
+                    Some(p.port_name)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
     if ports.is_empty() {
         error!("Failed to init mtrf. No ports were found.");
         return Ok(());
     }
     let port = &ports[0];
-    info!("Init mrtf using port:{}", port.port_name);
+    info!("Init mrtf using port:{}", port);
 
-    let mtrf = Mtrf::new(port, MessageHandler { handlers, home })?;
+    let mtrf = Mtrf::new(&port, MessageHandler { handlers, home })?;
     INSTANCE
         .set(Mutex::new(mtrf))
         .map_err(|_| anyhow!("Mtrf is already initialized."))?;
